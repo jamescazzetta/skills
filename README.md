@@ -87,17 +87,6 @@ never file dumps, and each executor's context stays minimal.
 
 ---
 
-## Worked example
-
-[`examples/`](examples/) walks a fictional project — an offline field guide — through four
-orientations: a compounding schema decision that beat the obvious authoring task, a **MISS** that
-recalibrated the next cycle, a spike that eliminated an option, and a `blocked` exit where the real
-#1 needed a human. Plus the packet set one of those orientations handed to `ten-eighty-ten`.
-
-The MISS is the point. A ledger with only hits in it is a ledger that isn't measuring anything.
-
----
-
 ## Install
 
 Drop either directory into your skills folder:
