@@ -33,57 +33,78 @@ prediction next time round.
 
 ### 0. Read the ledger (always first)
 Orientation without memory is a fresh guess wearing a process. The ledger is that
-memory: ONE append-only `ORIENT-LEDGER.md` **per project**, living beside §6's
-decision records.
+memory: ONE `ORIENT-LEDGER.md` per project, beside the ADRs it cites. Find it with
+`find . -name ORIENT-LEDGER.md -not -path '*/node_modules/*' | head -1` — THIS repo
+only; if absent, create it in the ADR / decision directory (create that too if absent)
+and fill State from §2's scan. Two zones, two mutation rules:
 
-Find this project's ledger — search THIS repo only:
-`find . -name ORIENT-LEDGER.md -not -path '*/node_modules/*' | head -1`
+- **State** (pinned, top) — where we stand: North Star, coverage pointers, open
+  blockers, links. Rewritten in place; re-date `confirmed:` on every rewrite.
+- **Entries** (below, newest last) — the bets. Append-only: once an entry is in, only
+  its Verdict line ever changes; wrong anywhere else means append a superseding entry
+  and point the old Verdict at it. History is never edited, only outvoted.
 
-- **No ledger** — create it in the repo's ADR / decision directory (create that too if
-  absent) using the format below, fill the North Star from §2's scan, then go to §1.
-- **Ledger found** — read the pinned block and the last entry, then
-  `grep -n 'Verdict: PENDING' <ledger>`. Any PENDING entry whose End-Shape has since
-  landed gets its §8 micro-retro NOW, before you orient again. Closing another session's
-  loop is your job, not an intrusion — unclosed loops are how calibration silently dies.
+Read State and the last entry — slug, Instead-of and Verdict are your §2 priors; you
+are not starting cold. Then `grep -n 'Verdict    PENDING' <ledger>`: any PENDING entry
+whose Guarantee has since landed gets its §8 micro-retro NOW, whoever opened it — and
+never open a new entry while a landed item's Verdict is still PENDING.
 
-The last entry's Target, Runner-up and Verdict are your priors for §2: you are not
-starting cold. Never open a new entry while a landed item's Verdict is still PENDING.
+**A ledger older than this format** uses `## North Star`, `Target`, `Why Now`, `End-Shape`,
+`Runner-up`, a colon-form `Verdict:` — or no verdict field at all. Do NOT rewrite it; history
+is never edited. Widen the sweep to find its open loops —
+`grep -nEi 'verdict[: ]|pending|not run' <ledger>` — and read the last entry's own words,
+since an unclosed bet there may be prose rather than a field. Close what has landed in
+whatever form that entry already uses, write the NEXT entry in the format above, and convert
+the pinned block to `## State` the first time you rewrite State. A format change is never a
+reason to lose a loop.
 
-**Linked ledgers.** Ledgers are per-project and independent by default. If — and only
-if — this project's pinned block names others under `Linked ledgers:`, read the pinned
-block and last entry of each of those too, as context for a genuine cross-repo
-constraint. Strictly read-only:
-- never append to, close a PENDING in, or edit a linked project's ledger — each project
-  closes its own loops, and its Verdicts calibrate its own scans, not yours;
-- a linked entry is a constraint or a prior, never your Target — you cannot orient
-  another project from here;
-- linkage is neither symmetric nor inherited: follow only the paths THIS ledger names,
-  one hop, and never go hunting for ledgers a project has not declared.
-
-Adding a link is a deliberate act — append a path under `Linked ledgers:` only when a
-decision here genuinely depends on that project's direction, and say why in one line.
-
-**Ledger format** — pinned block at the top, entries appended below, newest last:
+**Format** — fixed-width labels, values starting at column 12, greppable by column:
 
 ```
-## North Star  (confirmed: YYYY-MM-DD)
-Destination: <one line — the end-state THIS project is navigating toward>
-Reached when: <the observable that means this slice is DONE>
-Linked ledgers: <path — why it constrains us> | none
+## State  (confirmed: YYYY-MM-DD)
+North Star <one line — the end-state THIS project is navigating toward>
+Reached    <the observable that means this slice is DONE>
+Coverage   <N/M · path for each live matrix — or none>
+Blockers   <blocker + the smallest human act that unblocks it — or none>
+Linked     <path> · us→them | they→us | ↔ · <what crosses the boundary> — or none
 
-## YYYY-MM-DD — <target, <=10 words>
-- Exit: proceed | spike | reprioritize | blocked | reached
-- Why Now: <leverage claim that can come out false>
-- Falsifier: <the observable that would prove Why Now wrong>
-- Cost & Payback: <rough spend> / ONE-SHOT | COMPOUNDING
-- End-Shape: <testable done>
-- Coverage: <N of M + path to the matrix, or n/a>
-- Runner-up (not doing): <what lost, and why>
-- Verdict: PENDING
+## O-<n> · <kebab-slug>  (YYYY-MM-DD)
+Exit       proceed | spike | reprioritize | blocked | reached
+Guarantee  <what the system GUARANTEES once this lands — not "what done looks like">
+Why now    <the leverage claim that can come out false>
+Falsifier  <the observable that would prove Why now wrong>
+Cost       <rough spend> · ONE-SHOT | COMPOUNDING
+Instead-of <runner-up slug — why it lost>
+Coverage   <N/M · path to the matrix, or n/a>
+Verdict    PENDING
 ```
 
-Fixed field order is deliberate: it makes the loop greppable, so a session can *verify*
-it closed the loop instead of believing it did.
+`Verdict` is minted as `PENDING` and is the ONLY line that may later
+change. Its whole value set is four states — anything else is unreadable to the next §0:
+
+```
+Verdict    PENDING
+Verdict    HIT (YYYY-MM-DD) — <one line against Why now>
+Verdict    MISS (YYYY-MM-DD) — <one line against Why now>
+Verdict    DROPPED (YYYY-MM-DD) — <the higher lock that changed>
+Verdict    SUPERSEDED → O-<m>
+```
+
+`O-<n> · slug` is the bet's one canonical name — it heads the ten-eighty-ten packet,
+the commit and the ADR, so three sessions cannot call one piece of work three things.
+Every value is ONE physical line, at most 120 characters after column 12, NEVER wrapped:
+`awk 'length > 132 {print FNR": "length}' <ledger>` must print nothing. "One sentence" is not
+a cap — a 755-character sentence obeys it — and a wrapped value breaks column-grep silently,
+because the continuation line carries no label. Overflow is the signal, not the problem: it
+means the clause belongs in an ADR row this entry cites. Each clause passes one test — would
+it change a future decision? If not, cut it. **The ledger cites prose, it does not contain it**: a
+finding that deserves paragraphs becomes an ADR row, and the entry carries its id.
+
+**Linked ledgers** — declared on State's `Linked` line as direction + mechanism, never
+a bare path: `../flavor-engine · they→us · their transform ids key our provenance`.
+Read each declared ledger's State and last entry, strictly read-only: never append,
+never close its PENDINGs, never take your Target from one — each project closes its
+own loops. One hop, declared paths only; link only on a genuine cross-repo dependency.
 
 ### 1. Step back
 Do not execute yet. Write the task you're ABOUT to do in one sentence — then question it.
@@ -138,18 +159,25 @@ at comparable leverage, then take exactly one exit and emit it verbatim before a
   unblocks it, put both in front of the user, and only THEN ask whether the next-best item
   is worth doing meanwhile — as an explicit second choice, logged `Exit: blocked` with the
   real #1 named in the same entry so the next §0 still sees it.
-- **Reached** — this slice is DONE: the ledger's `Reached when` holds, or the §4 coverage
+- **Reached** — this slice is DONE: the ledger's `Reached` line holds, or the §4 coverage
   matrix is closed. Stop. Do not manufacture a next item inside a finished area; return to
-  the vision for the next slice, or hand back to the user. Log `Exit: reached` and update
-  the North Star block.
+  the vision for the next slice, or hand back to the user. Log `Exit: reached` and rewrite
+  the State block.
+
+The exit opens the entry: mint the next `O-<n>`, slug the winner, and write Exit, Why
+now, Falsifier, Cost, Instead-of and `Verdict    PENDING` NOW, while the comparison is still live — not from
+memory at §6. End Why now checkable ("unblocks X", "coverage 84/212 → 120/212"):
+"improves quality" cannot come out false, so it teaches §8 nothing. A compounding
+rival that lost to a one-shot gets its why on the Instead-of line.
 
 ### 4. Data-domain protocol (when building into data)
 Understand the FULL SPECTRUM of the domain before adding to it. If the intent is to
-MAP a domain, do this FIRST — before authoring a single new entry:
+MAP a domain, do this FIRST — before authoring a single new member:
 1. **Chart the full landscape.** Enumerate the whole domain from *verified,
    scientifically-accepted sources* — not memory, not vibes. What are ALL the members?
 2. **Measure coverage.** How much of that landscape do we already have? Produce the
-   explicit covered / uncovered matrix, sized (N of M).
+   explicit covered / uncovered matrix, sized (N of M) — that size is the entry's
+   Coverage line; write `N/M · path` now, not at §6.
 3. **Consolidate into a lean, traceable report.** One structured doc per topic: the
    landscape, the coverage, the gaps — each claim cited to its source, each id
    traceable. Understandable and lean: a map, not a transcript.
@@ -165,57 +193,49 @@ non-systematic coverage. The map is also what makes the NEXT prioritization chea
 Before authoring the solution, make it EASY:
 - **Feynman** — explain the problem and the intended solution in plain language, as
   if teaching a smart beginner. Every place the explanation stalls is a gap in your
-  understanding; close it before you build. If you cannot write §6's End-Shape without
-  hedging, that hedge IS the stall — close it before building, not after.
+  understanding; close it before you build. The Guarantee locks here — if you cannot
+  write that one line un-hedged, the hedge IS the stall; close it before building.
 - **First principles** — separate what is irreducibly true here from what is merely
   inherited assumption. Rebuild the solution up from the truths.
 
-### 6. Document the decision
-Write the record BEFORE delegating anything — as a ledger entry, and in the ADR /
-decision log where it belongs. A slot you can't fill is a step you haven't finished:
-
-- **Target** — what exactly are we building?
-- **Why Now** — the leverage argument in one line, ending in a claim that can be CHECKED
-  when it lands: "this unblocks X", "this moves coverage from N-of-M to K", "this cuts
-  the next item's cost from A to B". "It's next on the list" and "it improves quality"
-  are not claims — they cannot come out false, so they teach §8 nothing.
-- **Falsifier** — the observable that would prove Why Now wrong.
-- **Cost & Payback** — rough spend (files touched, delegated packets, whether new
-  external evidence must be gathered), plus ONE-SHOT or COMPOUNDING: does the value land
-  once, or does this make the next N items cheaper (a harness, a map, a schema)? If you
-  picked a one-shot over a compounding rival, say why on the same line.
-- **End-Shape** — what does "done" look like, concretely enough to test against?
-- **Coverage** — link to the N-of-M matrix, if applicable.
-- **Runner-up** — what came second on the slate, and why it lost.
-
-Not in chat scrollback. Future-you and a reviewer should reconstruct the "why" without
-re-deriving it.
+### 6. Confirm the record
+By now the entry already exists — §3 wrote the bet, §4 the Coverage line, §5 the
+Guarantee. This step confirms; it does not author. Read the entry back: every slot
+filled, every line one sentence, no line needing a second. A slot you can't fill is a
+step you haven't finished — go back to the step that owns it, don't pad the slot.
+Reasoning that wants paragraphs goes into the ADR / decision register now, and the
+entry cites its id. Not in chat scrollback: future-you and a reviewer reconstruct
+the "why" from the entry and the rows it cites, without re-deriving it.
 
 ### 7. Gate, then execute via /ten-eighty-ten
-Show the record — including the **Runner-up**, so the user can redirect without
-re-deriving your comparison — and stop for confirmation. Say plainly if the move is
-one-way (hard to reverse, invalidates published ids or provenance); a gate that renders
-an irreversible decision identical to a reversible one only looks like oversight. This is
-the design gate: the last cheap moment to change direction — everything past it spends
-tokens and produces diffs.
+Show the entry — Instead-of included, so the user can redirect without re-deriving your
+comparison — and stop for confirmation. Say plainly if the move is one-way (hard to
+reverse, invalidates published ids or provenance); a gate that renders an irreversible
+decision identical to a reversible one only looks like oversight. This is the design
+gate: the last cheap moment to change direction — everything past it spends tokens and
+produces diffs.
 
-On approval, invoke `/ten-eighty-ten` with the §6 record as the task statement; its own
-gate decides whether the work is delegated or done solo, so don't pre-decide that here.
-Carry Why Now and Coverage into the packets' Context — an executor that doesn't know what
-the work serves optimizes the wrong thing.
+On approval, invoke `/ten-eighty-ten` with the entry as the task statement, headed by
+its `O-<n> · slug`; ten-eighty-ten's own gate decides whether the work is delegated or
+done solo, so don't pre-decide that here. Carry Why now and Coverage into the packets'
+Context — an executor that doesn't know what the work serves optimizes the wrong thing.
 
 **Interrupt clause.** Don't re-orient mid-execution — but if a packet report shows the
-End-Shape is unreachable as specified, or the gap the Why Now named is already closed,
-STOP. That is not thrashing. Log it on the entry and re-enter at §1.
+Guarantee is unreachable as specified, or the gap Why now named is already closed, STOP
+— and DISCARD: revert the in-flight work that existed only to serve the dead decision,
+or the dropped bet ships anyway as a half-built diff. Supersede the entry — its Verdict
+names the successor §1 opens — and re-enter there. That is not thrashing.
 
 ### 8. Micro-retro, then loop
 When the item lands, ask the question the diff can't answer: did it deliver the leverage
-§6 predicted? ten-eighty-ten's Phase 3 already verified it *works* — this asks whether it
-*mattered*. Check BOTH predictions: the Falsifier (did the named observable actually
-move?) and Cost & Payback (what did it really cost, and did the compounding payback show
-up?). Then replace `Verdict: PENDING` on that ledger entry with:
+the entry predicted? ten-eighty-ten's Phase 3 already verified it *works* — this asks
+whether it *mattered*. Check BOTH predictions: the Falsifier (did the named observable
+actually move?) and Cost (what did it really cost, and did the compounding payback show
+up?). Then close the Verdict — the entry's one mutable line — with:
 
-`Verdict: HIT|MISS — <one line against Why Now>`
+`Verdict    HIT (YYYY-MM-DD) — <one line against Why now>` — or `MISS`, same shape.
+A bet the §7 gate rejected, or that the interrupt clause discarded, closes `DROPPED`; it is
+still closed, and an entry that never resolves is a loop that blocks every later orientation.
 
 A miss is data, not failure: it recalibrates the next §3, and repeated misses in one area
 mean the §2 scan is reading the wrong signal. **A run of HITs with the North Star no
@@ -232,9 +252,12 @@ re-orienting at the boundary.
 | "It's the obvious next task, so I'll just do it" | Obvious ≠ highest-leverage. Run steps 2–3 first. |
 | Ranking one candidate | A superlative over a set of one is always true. §2 returns three, or the scan failed. |
 | "Leverage" with no cost on the other side | A gap named without a price is a wish. Rank by leverage-per-cost and log the cost you predicted. |
-| A Why Now that cannot come out false | Then §8 can only ever say HIT, and the loop never learns. Write the Falsifier. |
+| A Why now that cannot come out false | Then §8 can only ever say HIT, and the loop never learns. Write the Falsifier. |
 | Re-ranking because the real #1 needs a human | That is `blocked`, not `reprioritize`. Name the blocker and the unblocking act; a doable item is not automatically the top one. |
 | Opening a new entry with a PENDING verdict on a landed item | Close it first. Unclosed loops are how calibration silently dies. |
+| Composing the entry at §6 | Each line locked in §3–§5 the moment it resolved; §6 only confirms. Batched retrospection writes essays, not records. |
+| A field that needs a second line | Over cap. The ledger cites prose, it does not contain it — the paragraph becomes an ADR row, the entry carries its id. |
+| Editing a landed entry | Verdict is the only mutable line. Append a superseding entry and point the old Verdict at it. |
 | Writing into a linked project's ledger | Read-only, one hop. Each project closes its own loops. |
 | Trusting a roadmap doc you didn't date-check | Stale docs corrupt every step below them. Dates are a required field in the §2 report. |
 | Mapping a domain from memory | Enumerate from verified sources; memory is lossy and biased. |
@@ -244,6 +267,7 @@ re-orienting at the boundary.
 | Skipping the Feynman pass | If you can't explain it simply, you don't understand it — and you'll build it wrong. |
 | Skipping the gate because you feel confident | Confidence is cheapest to test before the tokens are spent, not after. |
 | Re-orienting mid-execution | Orient at chunk boundaries, not on every step; thrashing is not diligence — but see §7's interrupt clause: "don't re-orient" never means "don't stop". |
+| Stopping without discarding | The half-built diff serving a dead decision ships itself. §7's STOP includes DISCARD. |
 | Spiking forever | One topic, one pass, ends in a decision — not an open research tab. |
 | "It landed green, so it worked" | Green means correct, not high-leverage. Check the Falsifier. |
 | Every retro a HIT, North Star no nearer | A local maximum. Force an outside-the-map candidate onto the next slate. |
