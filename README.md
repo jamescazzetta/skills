@@ -1,17 +1,20 @@
 # skills
 
-Two [Claude Code](https://claude.com/claude-code) skills I reach for on almost every session.
-They are a pair: one decides **what to build and why**, the other decides **how to build it
-cheaply**. Neither is interesting alone.
+[Claude Code](https://claude.com/claude-code) skills I reach for on almost every session.
+
+The first two are a pair: one decides **what to build and why**, the other decides **how to build
+it cheaply**. Neither is interesting alone. The third is a different kind of thing — a review lens
+that runs after the work exists.
 
 | Skill | Question it answers | Failure it prevents |
 |---|---|---|
 | [`orient`](orient/SKILL.md) | What is the highest-leverage next move, and how will I know if I was wrong? | Building the wrong thing well |
 | [`ten-eighty-ten`](ten-eighty-ten/SKILL.md) | Which parts of this need my best model, and which don't? | Paying top-tier rates for mechanical work |
+| [`five-lines-review`](five-lines-review/SKILL.md) | Is this code shaped so the next change is cheap? | Reviewing only for correctness, and calling it done |
 
 ---
 
-## Why these two
+## Why the pair
 
 An agent session has a strong bias toward the task it walked in with. It will execute that task
 competently, commit it cleanly, and report success — and none of that tells you it was worth doing.
@@ -85,6 +88,26 @@ never file dumps, and each executor's context stays minimal.
 - **A capped escalation ladder.** Retry once, bump one tier, then take over. There is no "retry
   until green".
 
+## five-lines-review
+
+A structural-quality lens for a diff, and deliberately **not** a bug-finding one. Ten mechanical
+rules — five-line methods, no if-else, no inheriting implementation, no getters that leak the
+decision to the caller — each expressed as a signal you can grep for rather than a smell you have
+to sense. That is the book's argument: apply rules, don't rely on intuition.
+
+Two things keep it usable rather than tyrannical:
+
+- **It only flags what the diff introduces or grows.** Most production code violates several of
+  these, and that's normal rather than a crisis. A violation in code the PR merely touches in
+  passing is out of scope, and every finding says which it is.
+- **It never claims to be the whole review.** A method can break all ten rules and be correct; a
+  three-line method can still be wrong. If the summary has no correctness section, the review isn't
+  done — that's in the skill as a listed mistake.
+
+The rules are structural, so they're language-agnostic. The signals name concrete forms across
+several languages rather than assuming one, with a short note on how *interface*, *property* and
+*inheriting implementation* read in languages that spell them differently.
+
 ---
 
 ## Install
@@ -95,11 +118,13 @@ Drop either directory into your skills folder:
 git clone https://github.com/jamescazzetta/skills.git
 cp -r skills/orient ~/.claude/skills/            # personal, all projects
 cp -r skills/ten-eighty-ten ~/.claude/skills/
+cp -r skills/five-lines-review ~/.claude/skills/
 ```
 
 Project-scoped instead: copy into `.claude/skills/` inside the repo.
 
-Then invoke by name — `/orient`, `/ten-eighty-ten` — or let the description trigger them. Invoking
+Then invoke by name — `/orient`, `/ten-eighty-ten` — or let the description trigger them
+(`five-lines-review` is description-triggered during a review). Invoking
 **by name, in the open** matters more than it sounds: a sequence that was followed but never named
 leaves a record that cannot show how the work was chosen.
 
@@ -111,8 +136,12 @@ hop, read-only, and never written to.
 
 ## Notes
 
-Written for Claude Code, and both skills assume its `Agent` tool for delegation and its model tiers
-for routing. The ideas port to any agent harness with subagents and more than one model tier; the
-specific tool names would need swapping.
+Written for Claude Code. `orient` and `ten-eighty-ten` assume its `Agent` tool for delegation and
+its model tiers for routing; the ideas port to any agent harness with subagents and more than one
+model tier, but the tool names would need swapping. `five-lines-review` has no such dependency.
+
+`five-lines-review` encodes ten rules from Christian Clausen's *Five Lines of Code* (Manning) as
+review signals. The rules are his; the skill is only a way of applying them to a diff. Read the
+book — it argues the case far better than a table can.
 
 No license file — all rights reserved. Fork freely for your own use; tell me if you improve them.
